@@ -1130,6 +1130,12 @@ export default function EWConsole() {
   // DRDO Seven Figures of Merit State
   const [fomsList, setFomsList] = useState<FOMItem[]>(DEFAULT_7_FOMS);
 
+  // Multi-config TSRD dataset state (folder 3 integration)
+  const [tsrdConfigs, setTsrdConfigs] = useState<any[]>([]);
+  const [selectedConfig, setSelectedConfig] = useState("config_0");
+  const [tsrdTotalPulses, setTsrdTotalPulses] = useState(804732);
+  const [tsrdTotalEmitters, setTsrdTotalEmitters] = useState(489);
+
   // 2D Search Problem Matrix State
   const [matrixData, setMatrixData] = useState<any>(null);
   const [showGroundTruth, setShowGroundTruth] = useState(true);
@@ -1321,6 +1327,20 @@ export default function EWConsole() {
     const timer = setInterval(fetchBackendData, 3500);
     return () => clearInterval(timer);
   }, [fetchBackendData]);
+
+  // Fetch dataset configs from /api/dataset/configs
+  useEffect(() => {
+    fetch("http://localhost:8000/api/dataset/configs", { signal: AbortSignal.timeout(3000) })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Array.isArray(data.configs) && data.configs.length > 0) {
+          setTsrdConfigs(data.configs);
+          setTsrdTotalPulses(data.totalPulses || 804732);
+          setTsrdTotalEmitters(data.totalEmitters || 489);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch verified results
   useEffect(() => {
@@ -2436,29 +2456,82 @@ export default function EWConsole() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div className="panel">
                     <div className="panel-head">
-                      <span className="panel-title">TSRD DATASET ADAPTER (LOCAL)</span>
+                      <span className="panel-title">TSRD DATASET ADAPTER (MULTI-CONFIG)</span>
+                      <span className="panel-tag live">9 CONFIGS LOADED</span>
                     </div>
                     <div className="panel-body">
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span className="dim">Corpus File</span>
+                          <span className="dim">Total Configs</span>
                           <span className="mono" style={{ color: "var(--cyan-signal)" }}>
-                            SIH_DATA/2/TSRD_READY/raw/config_0.h5
+                            {tsrdConfigs.length > 0 ? tsrdConfigs.length : 9} (config_0 + 8 from folder 3)
                           </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span className="dim">Total TSRD Pulses</span>
-                          <span className="mono">169,617 pulses</span>
+                          <span className="mono">{tsrdTotalPulses.toLocaleString()} pulses</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span className="dim">Total Emitters</span>
+                          <span className="mono" style={{ color: "var(--green-confirm)" }}>{tsrdTotalEmitters} radar emitters</span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span className="dim">Offline Mode</span>
-                          <span className="mono" style={{ color: "var(--green-confirm)" }}>
-                            ACTIVE (No HuggingFace Download)
-                          </span>
+                          <span className="mono" style={{ color: "var(--green-confirm)" }}>ACTIVE (No HuggingFace Download)</span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                           <span className="dim">Truth Leakage Guard</span>
                           <span className="mono">STRICT ENFORCEMENT</span>
+                        </div>
+                        {/* Config selector */}
+                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 5 }}>
+                          <span className="dim" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Active Config for Matrix View</span>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {(tsrdConfigs.length > 0 ? tsrdConfigs : [
+                              { configId: "config_0" }, { configId: "config_1" }, { configId: "config_106" },
+                              { configId: "config_115" }, { configId: "config_124" }, { configId: "config_160" },
+                              { configId: "config_214" }, { configId: "config_216" }, { configId: "config_223" },
+                            ]).map((cfg: any) => (
+                              <button
+                                key={cfg.configId}
+                                id={`config-btn-${cfg.configId}`}
+                                onClick={() => setSelectedConfig(cfg.configId)}
+                                style={{
+                                  padding: "2px 7px",
+                                  fontSize: 10,
+                                  fontFamily: "monospace",
+                                  background: selectedConfig === cfg.configId ? "var(--cyan-signal)" : "rgba(30,50,80,0.7)",
+                                  color: selectedConfig === cfg.configId ? "#000" : "var(--text-muted)",
+                                  border: `1px solid ${selectedConfig === cfg.configId ? "var(--cyan-signal)" : "var(--border)"}`,
+                                  borderRadius: 3,
+                                  cursor: "pointer",
+                                  transition: "all 0.15s",
+                                }}
+                              >
+                                {cfg.configId}
+                              </button>
+                            ))}
+                          </div>
+                          {tsrdConfigs.length > 0 && (() => {
+                            const cfg = tsrdConfigs.find((c: any) => c.configId === selectedConfig);
+                            if (!cfg) return null;
+                            return (
+                              <div style={{ background: "rgba(0,180,255,0.05)", border: "1px solid rgba(0,180,255,0.15)", borderRadius: 4, padding: "6px 10px", marginTop: 4 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                  <span className="dim">Pulses</span>
+                                  <span className="mono">{(cfg.pulseCount || 0).toLocaleString()}</span>
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                  <span className="dim">Transmitters</span>
+                                  <span className="mono">{cfg.txCount} tx · {cfg.uniqueEmitters} unique</span>
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                  <span className="dim">Freq Range</span>
+                                  <span className="mono">{cfg.freqMinMhz ? `${(cfg.freqMinMhz/1000).toFixed(1)}` : "0.5"}–{cfg.freqMaxMhz ? `${(cfg.freqMaxMhz/1000).toFixed(1)}` : "18.0"} GHz</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -2809,92 +2882,207 @@ export default function EWConsole() {
           {/* ================= PAGE 7: TSRD DATASET ================= */}
           {currentPage === "tsrd" && (
             <div>
-              <div className="panel">
+              {/* ── Multi-Config Aggregate Stats ── */}
+              <div className="panel" style={{ marginBottom: 14 }}>
                 <div className="panel-head">
-                  <span className="panel-title">TURING SYNTHETIC RADAR DATASET (TSRD) SPECIFICATION</span>
-                  <span className="panel-tag live">LOCAL DATASET READY</span>
+                  <span className="panel-title">TURING SYNTHETIC RADAR DATASET (TSRD) — MULTI-CONFIG SPECIFICATION</span>
+                  <span className="panel-tag live">9 CONFIGS · LOCAL DATASET READY</span>
                 </div>
                 <div className="panel-body">
                   <div className="grid grid-4" style={{ marginBottom: 14 }}>
                     <div className="metric">
                       <div className="metric-label">TOTAL TSRD PULSES</div>
-                      <div className="metric-value cyan">169,617</div>
-                      <div className="metric-sub">SOURCE: config_0.h5</div>
+                      <div className="metric-value cyan">
+                        {tsrdTotalPulses > 0 ? tsrdTotalPulses.toLocaleString() : "804,732"}
+                      </div>
+                      <div className="metric-sub">9 CONFIGS (FOLDER 3 + config_0)</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-label">EMITTER COUNT</div>
-                      <div className="metric-value">72</div>
-                      <div className="metric-sub">LABELLED RADARS</div>
+                      <div className="metric-label">TOTAL EMITTERS</div>
+                      <div className="metric-value">{tsrdTotalEmitters > 0 ? tsrdTotalEmitters : 489}</div>
+                      <div className="metric-sub">ACROSS ALL CONFIGS</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-label">TIME SLOTS</div>
-                      <div className="metric-value">290</div>
-                      <div className="metric-sub">100 ms DURATION</div>
+                      <div className="metric-label">CONFIG FILES</div>
+                      <div className="metric-value amber">{tsrdConfigs.length > 0 ? tsrdConfigs.length : 9}</div>
+                      <div className="metric-sub">HDF5 SCENARIOS</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-label">OCCUPANCY RATIO</div>
-                      <div className="metric-value amber">7.57%</div>
-                      <div className="metric-sub">483 / 6,380 CELLS</div>
+                      <div className="metric-label">PDW FEATURES</div>
+                      <div className="metric-value">5</div>
+                      <div className="metric-sub">ToA · Freq · PW · AoA · Amp</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-2">
-                    <div className="panel">
-                      <div className="panel-head">
-                        <span className="panel-title">PULSE ATTRIBUTE DISTRIBUTIONS</span>
+                  {/* Per-Config breakdown table */}
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, fontFamily: "monospace" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                          {["Config", "Filename", "Pulses", "TX Count", "Unique Emitters", "Freq Range", "Bands"].map(h => (
+                            <th key={h} style={{ padding: "5px 10px", textAlign: "left", color: "var(--cyan-signal)", fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(tsrdConfigs.length > 0 ? tsrdConfigs : [
+                          { configId: "config_0",   filename: "config_0.h5",   pulseCount: 0,       txCount: 72,  uniqueEmitters: 72,  freqMinMhz: 500,    freqMaxMhz: 18000 },
+                          { configId: "config_1",   filename: "config_1.h5",   pulseCount: 50013,   txCount: 36,  uniqueEmitters: 30,  freqMinMhz: 350960, freqMaxMhz: 29317326 },
+                          { configId: "config_106", filename: "config_106.h5", pulseCount: 264849,  txCount: 81,  uniqueEmitters: 70,  freqMinMhz: 389661, freqMaxMhz: 29299894 },
+                          { configId: "config_115", filename: "config_115.h5", pulseCount: 7823,    txCount: 24,  uniqueEmitters: 17,  freqMinMhz: 2552094,freqMaxMhz: 28149572 },
+                          { configId: "config_124", filename: "config_124.h5", pulseCount: 60090,   txCount: 41,  uniqueEmitters: 28,  freqMinMhz: 350634, freqMaxMhz: 29247236 },
+                          { configId: "config_160", filename: "config_160.h5", pulseCount: 168995,  txCount: 74,  uniqueEmitters: 56,  freqMinMhz: 231064, freqMaxMhz: 29298608 },
+                          { configId: "config_214", filename: "config_214.h5", pulseCount: 86148,   txCount: 40,  uniqueEmitters: 28,  freqMinMhz: 600151, freqMaxMhz: 28744662 },
+                          { configId: "config_216", filename: "config_216.h5", pulseCount: 99588,   txCount: 53,  uniqueEmitters: 35,  freqMinMhz: 400938, freqMaxMhz: 29271962 },
+                          { configId: "config_223", filename: "config_223.h5", pulseCount: 67226,   txCount: 68,  uniqueEmitters: 50,  freqMinMhz: 350542, freqMaxMhz: 29295408 },
+                        ]).map((cfg: any, i: number) => (
+                          <tr
+                            key={cfg.configId}
+                            style={{
+                              borderBottom: "1px solid rgba(40,60,90,0.5)",
+                              background: i % 2 === 0 ? "rgba(0,0,0,0)" : "rgba(0,180,255,0.03)",
+                              cursor: "pointer",
+                              transition: "background 0.15s",
+                            }}
+                            onClick={() => setSelectedConfig(cfg.configId)}
+                          >
+                            <td style={{ padding: "5px 10px", color: selectedConfig === cfg.configId ? "var(--cyan-signal)" : "var(--text-main)" }}>
+                              {selectedConfig === cfg.configId ? "▶ " : ""}{cfg.configId}
+                            </td>
+                            <td style={{ padding: "5px 10px", color: "var(--text-muted)" }}>{cfg.filename}</td>
+                            <td style={{ padding: "5px 10px", color: "var(--cyan-bright)" }}>{cfg.pulseCount ? cfg.pulseCount.toLocaleString() : "—"}</td>
+                            <td style={{ padding: "5px 10px" }}>{cfg.txCount}</td>
+                            <td style={{ padding: "5px 10px", color: "var(--green-confirm)" }}>{cfg.uniqueEmitters}</td>
+                            <td style={{ padding: "5px 10px", fontSize: 10, color: "var(--text-muted)" }}>
+                              {cfg.freqMinMhz && cfg.freqMinMhz > 10000
+                                ? `${(cfg.freqMinMhz/1000000).toFixed(2)}–${(cfg.freqMaxMhz/1000000).toFixed(2)} THz*`
+                                : cfg.freqMinMhz
+                                  ? `${(cfg.freqMinMhz/1000).toFixed(0)}–${(cfg.freqMaxMhz/1000).toFixed(0)} GHz`
+                                  : "500–18000 MHz"}
+                            </td>
+                            <td style={{ padding: "5px 10px" }}>36</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 6, paddingLeft: 10 }}>
+                      * Raw ToA-encoded freq values from HDF5; bands remapped to 2–20 GHz (36 × 500 MHz IBW) for simulation.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── PDW Features + Discretization ── */}
+              <div className="grid grid-2" style={{ marginBottom: 14 }}>
+                <div className="panel">
+                  <div className="panel-head">
+                    <span className="panel-title">PULSE ATTRIBUTE DISTRIBUTIONS (ALL CONFIGS)</span>
+                  </div>
+                  <div className="panel-body">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Time of Arrival (ToA)</span>
+                        <span className="mono">0 – 29,317,326 µs</span>
                       </div>
-                      <div className="panel-body">
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Frequency Range</span>
-                            <span className="mono">10.36 MHz – 10,999.57 MHz</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Pulse Width (PW)</span>
-                            <span className="mono">0.007 µs – 346.27 µs</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Angle of Arrival (AoA)</span>
-                            <span className="mono">-179.99° to +179.98°</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Pulse Amplitude</span>
-                            <span className="mono">-170.48 dBm to -1.25 dBm</span>
-                          </div>
-                        </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Frequency</span>
+                        <span className="mono">149 MHz – 16,052 MHz</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Pulse Width (PW)</span>
+                        <span className="mono">0.007 µs – 354 µs</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Angle of Arrival (AoA)</span>
+                        <span className="mono">-180° to +180°</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Amplitude</span>
+                        <span className="mono">-177 dBm to +1.2 dBm</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Transmitter Labels</span>
+                        <span className="mono" style={{ color: "var(--cyan-signal)" }}>17–81 per config (0–indexed)</span>
                       </div>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="panel">
-                      <div className="panel-head">
-                        <span className="panel-title">DISCRETIZATION ARCHITECTURE</span>
+                <div className="panel">
+                  <div className="panel-head">
+                    <span className="panel-title">DISCRETIZATION ARCHITECTURE</span>
+                  </div>
+                  <div className="panel-body">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Simulator Spectrum</span>
+                        <span className="mono">18,000 MHz (36 Bands × 500 MHz)</span>
                       </div>
-                      <div className="panel-body">
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Simulator Spectrum</span>
-                            <span className="mono">18,000 MHz (36 Bands × 500 MHz)</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Evaluation Slots</span>
-                            <span className="mono">600 Time Slots / Episode</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Evaluation Dwells</span>
-                            <span className="mono">[20, 50, 100] ms</span>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span className="dim">Corpus Loader</span>
-                            <span className="mono" style={{ color: "var(--green-confirm)" }}>
-                              TSRDCorpusLoader (Offline)
-                            </span>
-                          </div>
-                        </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Evaluation Slots</span>
+                        <span className="mono">600 Time Slots / Episode</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Evaluation Dwells</span>
+                        <span className="mono">[20, 50, 100] ms</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Obs Matrix Shape</span>
+                        <span className="mono">290 slots × 36 bands per config</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Corpus Loader</span>
+                        <span className="mono" style={{ color: "var(--green-confirm)" }}>
+                          TSRDCorpusLoader (Multi-Dir Offline)
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span className="dim">Episode Pool</span>
+                        <span className="mono" style={{ color: "var(--cyan-signal)" }}>
+                          config_0 + 8 folder-3 configs (round-robin)
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* ── Selected Config Detail ── */}
+              {tsrdConfigs.length > 0 && (() => {
+                const cfg = tsrdConfigs.find((c: any) => c.configId === selectedConfig);
+                if (!cfg || !cfg.bandActivity) return null;
+                return (
+                  <div className="panel">
+                    <div className="panel-head">
+                      <span className="panel-title">BAND ACTIVITY PROFILE — {cfg.configId.toUpperCase()}</span>
+                      <span className="panel-tag sim">{cfg.txCount} TX · {cfg.pulseCount.toLocaleString()} PULSES</span>
+                    </div>
+                    <div className="panel-body">
+                      <div style={{ display: "flex", gap: 1, alignItems: "flex-end", height: 80, padding: "4px 0" }}>
+                        {(cfg.bandActivity as number[]).map((act: number, b: number) => (
+                          <div
+                            key={b}
+                            title={`B${String(b+1).padStart(2,"0")} (${(2+b*0.5).toFixed(1)}–${(2.5+b*0.5).toFixed(1)} GHz): ${(act*100).toFixed(1)}%`}
+                            style={{
+                              flex: 1,
+                              height: `${Math.max(4, act * 100 * 0.9)}%`,
+                              background: act > 0.12 ? "var(--cyan-signal)" : act > 0.05 ? "rgba(0,210,255,0.55)" : "rgba(0,180,255,0.25)",
+                              borderRadius: "2px 2px 0 0",
+                              transition: "height 0.3s",
+                              cursor: "default",
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text-faint)", marginTop: 4 }}>
+                        <span>B01 · 2.0 GHz</span>
+                        <span style={{ color: "var(--cyan-signal)", fontSize: 10 }}>36-BAND OCCUPANCY (fraction of time slots active)</span>
+                        <span>B36 · 20.0 GHz</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
