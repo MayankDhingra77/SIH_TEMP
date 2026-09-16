@@ -1516,12 +1516,29 @@ export default function EWConsole() {
       {/* ===== NAV ===== */}
       <nav className={`nav ${sidebarOpen ? "open" : ""}`}>
         <div className="nav-brand">
-          <div className="nav-brand-text">
-            <div className="code">VYAPTI</div>
-            <div className="sub">
-              Cognitive Smart Scan
-              <br />
-              for Electronic Support (ES)
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img
+              src="/logo.png"
+              alt="Team Anuman - Vyapti Logo"
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "1.5px solid var(--cyan-signal)",
+                boxShadow: "0 0 12px rgba(77, 216, 232, 0.35)",
+                background: "#ffffff",
+                flexShrink: 0,
+              }}
+            />
+            <div className="nav-brand-text">
+              <div className="code" style={{ fontSize: 15, letterSpacing: "1px" }}>VYAPTI</div>
+              <div style={{ fontSize: 10.5, color: "var(--amber-warn)", fontWeight: 600, letterSpacing: "0.5px" }}>
+                व्याप्ति
+              </div>
+              <div className="sub" style={{ marginTop: 2, fontSize: 9 }}>
+                Inference Across The Spectrum
+              </div>
             </div>
           </div>
           <button
@@ -1577,6 +1594,31 @@ export default function EWConsole() {
               <span className="hb-line" />
               <span className="hb-line" />
             </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => setCurrentPage("mission")}>
+              <img
+                src="/logo.png"
+                alt="Vyapti Logo"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "1.5px solid var(--cyan-signal)",
+                  boxShadow: "0 0 10px rgba(77, 216, 232, 0.3)",
+                  background: "#ffffff",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.8px", color: "var(--cyan-signal)", fontFamily: "var(--font-mono)" }}>
+                  VYAPTI
+                </span>
+                <span style={{ fontSize: 9.5, color: "var(--amber-warn)", letterSpacing: "0.5px", fontWeight: 600 }}>
+                  व्याप्ति
+                </span>
+              </div>
+            </div>
+            <div style={{ width: 1, height: 22, background: "var(--border-steel)", margin: "0 6px" }} />
             <span className="topbar-title">{activePageMeta.title}</span>
             <span className="topbar-crumb">{activePageMeta.crumb}</span>
           </div>
