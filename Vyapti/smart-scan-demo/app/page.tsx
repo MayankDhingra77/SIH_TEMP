@@ -1116,6 +1116,7 @@ const Matrix2DCanvas = React.memo(function Matrix2DCanvas(opts: {
 // ============ MAIN COMPONENT ============
 export default function EWConsole() {
   const [currentPage, setCurrentPage] = useState("mission");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [backendConnected, setBackendConnected] = useState(false);
   const [backendStatus, setBackendStatus] = useState<any>(null);
   const [activeBand, setActiveBand] = useState<number>(18);
@@ -1146,6 +1147,7 @@ export default function EWConsole() {
   const [matrixStep, setMatrixStep] = useState(42);
 
   // RF Continuous Waveform Search Problem State (Synchronized with Simulation)
+  const [searchViewMode, setSearchViewMode] = useState<"waveform" | "matrix">("waveform");
   const [showWaveTruth, setShowWaveTruth] = useState(true);
   const [showWaveScanPath, setShowWaveScanPath] = useState(true);
   const [showWaveMisses, setShowWaveMisses] = useState(true);
@@ -1505,15 +1507,33 @@ export default function EWConsole() {
 
   return (
     <div className="app">
+      {/* ===== NAV BACKDROP ===== */}
+      <div
+        className={`nav-backdrop ${sidebarOpen ? "open" : ""}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* ===== NAV ===== */}
-      <nav className="nav">
+      <nav className={`nav ${sidebarOpen ? "open" : ""}`}>
         <div className="nav-brand">
-          <div className="code">VYAPTI</div>
-          <div className="sub">
-            Cognitive Smart Scan
-            <br />
-            for Electronic Support (ES)
+          <div className="nav-brand-text">
+            <div className="code">VYAPTI</div>
+            <div className="sub">
+              Cognitive Smart Scan
+              <br />
+              for Electronic Support (ES)
+            </div>
           </div>
+          <button
+            className="nav-close"
+            onClick={() => setSidebarOpen(false)}
+            title="Close sidebar"
+          >
+            <svg viewBox="0 0 12 12">
+              <line x1="1" y1="1" x2="11" y2="11" />
+              <line x1="11" y1="1" x2="1" y2="11" />
+            </svg>
+          </button>
         </div>
         <div className="nav-list">
           {PAGES.map((p) => {
@@ -1522,7 +1542,7 @@ export default function EWConsole() {
               <div
                 key={p.id}
                 className={`nav-item ${isActive ? "active" : ""}`}
-                onClick={() => setCurrentPage(p.id)}
+                onClick={() => { setCurrentPage(p.id); setSidebarOpen(false); }}
               >
                 <span className="nav-num">{p.num}</span>
                 <span className="ic">
@@ -1546,31 +1566,45 @@ export default function EWConsole() {
         {/* TopBar */}
         <div className="topbar">
           <div className="topbar-left">
+            {/* Hamburger toggle */}
+            <button
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen((o) => !o)}
+              title="Toggle navigation"
+              aria-label="Toggle navigation"
+            >
+              <span className="hb-line" />
+              <span className="hb-line" />
+              <span className="hb-line" />
+            </button>
             <span className="topbar-title">{activePageMeta.title}</span>
             <span className="topbar-crumb">{activePageMeta.crumb}</span>
           </div>
           <div className="topbar-right">
-            <span
-              className={`pill ${backendConnected ? "pass" : "warn"}`}
-              style={{ fontSize: 9, padding: "2px 6px" }}
-            >
+            <span className={`pill ${backendConnected ? "pass" : "warn"}`}>
               <span className="d"></span>
               {backendConnected ? "LIVE :: PYTHON FASTAPI" : "DEMO REPLAY MODE"}
             </span>
-            <div className="topbar-stat">
-              SPECTRUM <span className="val">2–20 GHz (36 BANDS)</span>
+            <div className="topbar-chip">
+              <span className="label">SPECTRUM</span>
+              <span className="val">2–20 GHz (36 BANDS)</span>
             </div>
-            <div className="topbar-stat">
-              T+<span className="val mono clock-live">{fmtClock(simTimeMs)}</span>
+            <div className="topbar-chip">
+              <span className="label">MISSION CLOCK</span>
+              <span className="val clock-live">{fmtClock(simTimeMs)}</span>
             </div>
-            <div className="topbar-stat">
-              ACTIVE <span className="val" style={{ color: "var(--cyan-bright)" }}>B{String(activeBand + 1).padStart(2, "0")}</span>
+            <div className="topbar-chip">
+              <span className="label">ACTIVE RX</span>
+              <span className="val" style={{ color: "var(--cyan-bright)" }}>
+                B{String(activeBand + 1).padStart(2, "0")}
+              </span>
             </div>
           </div>
         </div>
 
         {/* Page Content */}
         <div className="page">
+          <div className="page-inner">
           {/* ================= PAGE 1: MISSION ================= */}
           {currentPage === "mission" && (
             <div>
@@ -1643,259 +1677,260 @@ export default function EWConsole() {
                 </div>
               </div>
 
-              {/* ===== 2D TIME-FREQUENCY SEARCH PROBLEM MATRIX ===== */}
-              <div className="panel" style={{ marginBottom: 14 }}>
+              {/* ===== 2D TIME-FREQUENCY SEARCH PROBLEM PANEL (UNIFIED TABS) ===== */}
+              <div className="panel">
                 <div className="panel-head">
-                  <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <span className="panel-title">
-                      2D SEARCH PROBLEM FORMULATION — GROUND TRUTH E(t, b) vs RECEIVER SCAN TRAJECTORY
-                      <span className="unit">36 Bands (Y-Axis) × 50 Time Slots (X-Axis) · 6,380 Cells Discretization</span>
+                      2D SEARCH PROBLEM FORMULATION — E(t, b) vs RECEIVER SCAN TRAJECTORY
+                      <span className="unit">36 Bands × 50 Time Slots</span>
                     </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowGroundTruth((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showGroundTruth ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showGroundTruth ? "TRUTH: ON" : "TRUTH: OFF"}
-                    </button>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowScanPath((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showScanPath ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showScanPath ? "TRAJECTORY: ON" : "TRAJECTORY: OFF"}
-                    </button>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowMisses((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showMisses ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showMisses ? "MISSES: ON" : "MISSES: OFF"}
-                    </button>
-                    <span className="panel-tag live">SCAN STEP: t={matrixStep}</span>
-                  </div>
-                </div>
-                <div className="panel-body">
-                  <Matrix2DCanvas
-                    width={1100}
-                    height={380}
-                    bands={36}
-                    timeSlots={50}
-                    matrix={matrixData?.matrix || groundTruthMatrix}
-                    scanPath={scanHistoryList}
-                    activeStep={matrixStep}
-                    activeBand={activeBand}
-                    showGroundTruth={showGroundTruth}
-                    showScanPath={showScanPath}
-                    showMisses={showMisses}
-                  />
-                  <div className="legend" style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 14 }}>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          background: "rgba(14, 48, 30, 0.95)",
-                          border: "1.5px solid #34d399",
-                          boxShadow: "0 0 6px rgba(52, 211, 153, 0.45)",
-                        }}
-                      ></span>
-                      Confirmed Intercept (Hit ⊕) — Receiver Dwelt on Active Emitter Cell
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          background: "rgba(10, 26, 44, 0.98)",
-                          border: "1.2px solid rgba(77, 216, 232, 0.85)",
-                          boxShadow: "0 0 4px rgba(77, 216, 232, 0.3)",
-                        }}
-                      ></span>
-                      Ground Truth Occupancy E(t, b) = 1 (TSRD Pulse Present)
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff3366", boxShadow: "0 0 5px #ff3366" }}
-                      ></span>
-                      Missed Opportunity ⊙ (Emitter Active, Receiver Dwelling in Another Band)
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{ border: "1.2px dashed rgba(77, 216, 232, 0.70)", background: "transparent" }}
-                      ></span>
-                      Receiver Dwell (Empty Spectrum / Quiet Cell)
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{ border: "1.8px solid #00f0ff", boxShadow: "0 0 5px rgba(0, 240, 255, 0.5)", background: "transparent" }}
-                      ></span>
-                      Live Scanning Dwell Window (Band {activeBand + 1})
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ===== RF CONTINUOUS WAVEFORM SEARCH PROBLEM SIMULATOR (IMAGE 2 REPRESENTATION) ===== */}
-              <div className="panel" style={{ marginBottom: 14 }}>
-                <div className="panel-head">
-                  <div>
-                    <span className="panel-title">
-                      SEARCH PROBLEM FORMULATION — GROUND TRUTH E(t, b) vs RECEIVER SCAN TRAJECTORY
-                      <span className="unit">36 Bands (Y-Axis) · 50 Time Slots (X-Axis) · Frequency-Scaled Wave Dispersion & Trajectory</span>
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowWaveTruth((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showWaveTruth ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showWaveTruth ? "TRUTH: ON" : "TRUTH: OFF"}
-                    </button>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowWaveScanPath((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showWaveScanPath ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showWaveScanPath ? "TRAJECTORY: ON" : "TRAJECTORY: OFF"}
-                    </button>
-                    <button
-                      className="btn small"
-                      onClick={() => setShowWaveMisses((v) => !v)}
-                      style={{
-                        fontSize: 9,
-                        padding: "2px 8px",
-                        background: showWaveMisses ? "var(--cyan-dim)" : "transparent",
-                        border: "1px solid var(--border-steel-bright)",
-                      }}
-                    >
-                      {showWaveMisses ? "MISSES: ON" : "MISSES: OFF"}
-                    </button>
-                    <span className="panel-tag live">SCAN STEP: t={matrixStep}</span>
-                  </div>
-                </div>
-                <div className="panel-body">
-                  <WaveformSearchCanvas
-                    width={1100}
-                    height={380}
-                    bands={36}
-                    timeSlots={50}
-                    matrix={matrixData?.matrix || groundTruthMatrix}
-                    scanPath={scanHistoryList}
-                    activeStep={matrixStep}
-                    activeBand={activeBand}
-                    showGroundTruth={showWaveTruth}
-                    showScanPath={showWaveScanPath}
-                    showMisses={showWaveMisses}
-                  />
-                  <div className="legend" style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 14 }}>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: "50%",
-                          border: "1.5px solid #6ee7b7",
-                          background: "rgba(110, 231, 183, 0.25)",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 10,
-                          color: "#6ee7b7",
-                          fontWeight: "bold",
-                        }}
+                    <div style={{ display: "flex", gap: 4, background: "rgba(6, 11, 19, 0.7)", padding: "3px 4px", borderRadius: 6, border: "1px solid var(--border-steel)" }}>
+                      <button
+                        className={`btn small ${searchViewMode === "waveform" ? "primary" : ""}`}
+                        style={{ padding: "3px 10px", fontSize: 10 }}
+                        onClick={() => setSearchViewMode("waveform")}
                       >
-                        ⊕
-                      </span>
-                      Receiver Trajectory (Hit)
+                        ∿ Continuous Waveform
+                      </button>
+                      <button
+                        className={`btn small ${searchViewMode === "matrix" ? "primary" : ""}`}
+                        style={{ padding: "3px 10px", fontSize: 10 }}
+                        onClick={() => setSearchViewMode("matrix")}
+                      >
+                        ⊞ Discrete Raster Matrix
+                      </button>
                     </div>
-                    {REFERENCE_WAVE_BANDS.map((wb) => (
-                      <div key={wb.band} className="legend-item">
-                        <span
-                          className="legend-swatch"
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {searchViewMode === "waveform" ? (
+                      <>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowWaveTruth((v) => !v)}
                           style={{
-                            width: 16,
-                            height: 3,
-                            borderRadius: 1,
-                            background: wb.color,
+                            background: showWaveTruth ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showWaveTruth ? "var(--cyan-signal)" : "var(--border-steel-bright)",
                           }}
-                        ></span>
-                        {wb.name}
-                      </div>
-                    ))}
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: "50%",
-                          border: "1.2px dashed #f87171",
-                          background: "transparent",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#f87171" }}></span>
-                      </span>
-                      Missed Opportunity ⊙
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: "50%",
-                          border: "1.2px dashed rgba(125, 211, 252, 0.60)",
-                          background: "transparent",
-                        }}
-                      ></span>
-                      Receiver Dwell (Quiet Cell)
-                    </div>
-                    <div className="legend-item">
-                      <span
-                        className="legend-swatch"
-                        style={{
-                          width: 16,
-                          height: 0,
-                          borderTop: "2px dashed #7dd3fc",
-                        }}
-                      ></span>
-                      Scan Path (Between Slots)
-                    </div>
+                        >
+                          {showWaveTruth ? "TRUTH: ON" : "TRUTH: OFF"}
+                        </button>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowWaveScanPath((v) => !v)}
+                          style={{
+                            background: showWaveScanPath ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showWaveScanPath ? "var(--cyan-signal)" : "var(--border-steel-bright)",
+                          }}
+                        >
+                          {showWaveScanPath ? "TRAJECTORY: ON" : "TRAJECTORY: OFF"}
+                        </button>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowWaveMisses((v) => !v)}
+                          style={{
+                            background: showWaveMisses ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showWaveMisses ? "var(--cyan-signal)" : "var(--border-steel-bright)",
+                          }}
+                        >
+                          {showWaveMisses ? "MISSES: ON" : "MISSES: OFF"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowGroundTruth((v) => !v)}
+                          style={{
+                            background: showGroundTruth ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showGroundTruth ? "var(--cyan-signal)" : "var(--border-steel-bright)",
+                          }}
+                        >
+                          {showGroundTruth ? "TRUTH: ON" : "TRUTH: OFF"}
+                        </button>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowScanPath((v) => !v)}
+                          style={{
+                            background: showScanPath ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showScanPath ? "var(--cyan-signal)" : "var(--border-steel-bright)",
+                          }}
+                        >
+                          {showScanPath ? "TRAJECTORY: ON" : "TRAJECTORY: OFF"}
+                        </button>
+                        <button
+                          className="btn small"
+                          onClick={() => setShowMisses((v) => !v)}
+                          style={{
+                            background: showMisses ? "var(--cyan-dim)" : "transparent",
+                            borderColor: showMisses ? "var(--cyan-signal)" : "var(--border-steel-bright)",
+                          }}
+                        >
+                          {showMisses ? "MISSES: ON" : "MISSES: OFF"}
+                        </button>
+                      </>
+                    )}
+                    <span className="panel-tag live">SCAN STEP: t={matrixStep}</span>
                   </div>
+                </div>
+                <div className="panel-body">
+                  {searchViewMode === "waveform" ? (
+                    <>
+                      <WaveformSearchCanvas
+                        width={1100}
+                        height={380}
+                        bands={36}
+                        timeSlots={50}
+                        matrix={matrixData?.matrix || groundTruthMatrix}
+                        scanPath={scanHistoryList}
+                        activeStep={matrixStep}
+                        activeBand={activeBand}
+                        showGroundTruth={showWaveTruth}
+                        showScanPath={showWaveScanPath}
+                        showMisses={showWaveMisses}
+                      />
+                      <div className="legend" style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 16 }}>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: "50%",
+                              border: "1.5px solid #6ee7b7",
+                              background: "rgba(110, 231, 183, 0.25)",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 10,
+                              color: "#6ee7b7",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ⊕
+                          </span>
+                          Receiver Trajectory (Hit)
+                        </div>
+                        {REFERENCE_WAVE_BANDS.map((wb) => (
+                          <div key={wb.band} className="legend-item">
+                            <span
+                              className="legend-swatch"
+                              style={{
+                                width: 16,
+                                height: 4,
+                                borderRadius: 2,
+                                background: wb.color,
+                              }}
+                            ></span>
+                            {wb.name}
+                          </div>
+                        ))}
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: "50%",
+                              border: "1.2px dashed #f87171",
+                              background: "transparent",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#f87171" }}></span>
+                          </span>
+                          Missed Opportunity ⊙
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: "50%",
+                              border: "1.2px dashed rgba(125, 211, 252, 0.60)",
+                              background: "transparent",
+                            }}
+                          ></span>
+                          Receiver Dwell (Quiet Cell)
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              width: 16,
+                              height: 0,
+                              borderTop: "2px dashed #7dd3fc",
+                            }}
+                          ></span>
+                          Scan Path (Between Slots)
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Matrix2DCanvas
+                        width={1100}
+                        height={380}
+                        bands={36}
+                        timeSlots={50}
+                        matrix={matrixData?.matrix || groundTruthMatrix}
+                        scanPath={scanHistoryList}
+                        activeStep={matrixStep}
+                        activeBand={activeBand}
+                        showGroundTruth={showGroundTruth}
+                        showScanPath={showScanPath}
+                        showMisses={showMisses}
+                      />
+                      <div className="legend" style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 16 }}>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              background: "rgba(14, 48, 30, 0.95)",
+                              border: "1.5px solid #34d399",
+                              boxShadow: "0 0 6px rgba(52, 211, 153, 0.45)",
+                            }}
+                          ></span>
+                          Confirmed Intercept (Hit ⊕) — Receiver Dwelt on Active Emitter Cell
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{
+                              background: "rgba(10, 26, 44, 0.98)",
+                              border: "1.2px solid rgba(77, 216, 232, 0.85)",
+                              boxShadow: "0 0 4px rgba(77, 216, 232, 0.3)",
+                            }}
+                          ></span>
+                          Ground Truth Occupancy E(t, b) = 1 (TSRD Pulse Present)
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff3366", boxShadow: "0 0 5px #ff3366" }}
+                          ></span>
+                          Missed Opportunity ⊙
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{ border: "1.2px dashed rgba(77, 216, 232, 0.70)", background: "transparent" }}
+                          ></span>
+                          Receiver Dwell (Quiet Cell)
+                        </div>
+                        <div className="legend-item">
+                          <span
+                            className="legend-swatch"
+                            style={{ border: "1.8px solid #00f0ff", boxShadow: "0 0 5px rgba(0, 240, 255, 0.5)", background: "transparent" }}
+                          ></span>
+                          Live Scanning Dwell Window (Band {activeBand + 1})
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -3542,6 +3577,7 @@ export default function EWConsole() {
               </div>
             </div>
           )}
+            </div>
         </div>
       </div>
     </div>
