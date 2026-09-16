@@ -1130,11 +1130,13 @@ export default function EWConsole() {
   // DRDO Seven Figures of Merit State
   const [fomsList, setFomsList] = useState<FOMItem[]>(DEFAULT_7_FOMS);
 
-  // Multi-config TSRD dataset state (folder 3 integration)
+  // Multi-config TSRD dataset state (folder 3 scan + folder 4 stare)
   const [tsrdConfigs, setTsrdConfigs] = useState<any[]>([]);
   const [selectedConfig, setSelectedConfig] = useState("config_0");
   const [tsrdTotalPulses, setTsrdTotalPulses] = useState(804732);
   const [tsrdTotalEmitters, setTsrdTotalEmitters] = useState(489);
+  const [tsrdScanConfigCount, setTsrdScanConfigCount] = useState(9);
+  const [tsrdStareConfigCount, setTsrdStareConfigCount] = useState(6);
 
   // 2D Search Problem Matrix State
   const [matrixData, setMatrixData] = useState<any>(null);
@@ -1328,7 +1330,7 @@ export default function EWConsole() {
     return () => clearInterval(timer);
   }, [fetchBackendData]);
 
-  // Fetch dataset configs from /api/dataset/configs
+  // Fetch dataset configs from /api/dataset/configs (scan + stare)
   useEffect(() => {
     fetch("http://localhost:8000/api/dataset/configs", { signal: AbortSignal.timeout(3000) })
       .then((r) => r.json())
@@ -1337,6 +1339,8 @@ export default function EWConsole() {
           setTsrdConfigs(data.configs);
           setTsrdTotalPulses(data.totalPulses || 804732);
           setTsrdTotalEmitters(data.totalEmitters || 489);
+          if (data.scanConfigCount != null) setTsrdScanConfigCount(data.scanConfigCount);
+          if (data.stareConfigCount != null) setTsrdStareConfigCount(data.stareConfigCount);
         }
       })
       .catch(() => {});
@@ -2457,14 +2461,20 @@ export default function EWConsole() {
                   <div className="panel">
                     <div className="panel-head">
                       <span className="panel-title">TSRD DATASET ADAPTER (MULTI-CONFIG)</span>
-                      <span className="panel-tag live">9 CONFIGS LOADED</span>
+                      <span className="panel-tag live">{tsrdConfigs.length > 0 ? tsrdConfigs.length : 15} CONFIGS LOADED</span>
                     </div>
                     <div className="panel-body">
                       <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span className="dim">Total Configs</span>
+                          <span className="dim">Scan Configs (Folder 3)</span>
                           <span className="mono" style={{ color: "var(--cyan-signal)" }}>
-                            {tsrdConfigs.length > 0 ? tsrdConfigs.length : 9} (config_0 + 8 from folder 3)
+                            {tsrdScanConfigCount} (config_0 + 8 scan)
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span className="dim">Stare Configs (Folder 4)</span>
+                          <span className="mono" style={{ color: "var(--amber, #f59e0b)" }}>
+                            {tsrdStareConfigCount} stare configs
                           </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -2483,40 +2493,59 @@ export default function EWConsole() {
                           <span className="dim">Truth Leakage Guard</span>
                           <span className="mono">STRICT ENFORCEMENT</span>
                         </div>
-                        {/* Config selector */}
+                        {/* Config selector — cyan = scan, amber = stare */}
                         <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 5 }}>
                           <span className="dim" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>Active Config for Matrix View</span>
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                            <span style={{ fontSize: 9, color: "var(--cyan-signal)", marginRight: 2 }}>● SCAN</span>
+                            <span style={{ fontSize: 9, color: "#f59e0b", marginRight: 6 }}>● STARE</span>
+                          </div>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                             {(tsrdConfigs.length > 0 ? tsrdConfigs : [
-                              { configId: "config_0" }, { configId: "config_1" }, { configId: "config_106" },
-                              { configId: "config_115" }, { configId: "config_124" }, { configId: "config_160" },
-                              { configId: "config_214" }, { configId: "config_216" }, { configId: "config_223" },
-                            ]).map((cfg: any) => (
-                              <button
-                                key={cfg.configId}
-                                id={`config-btn-${cfg.configId}`}
-                                onClick={() => setSelectedConfig(cfg.configId)}
-                                style={{
-                                  padding: "2px 7px",
-                                  fontSize: 10,
-                                  fontFamily: "monospace",
-                                  background: selectedConfig === cfg.configId ? "var(--cyan-signal)" : "rgba(30,50,80,0.7)",
-                                  color: selectedConfig === cfg.configId ? "#000" : "var(--text-muted)",
-                                  border: `1px solid ${selectedConfig === cfg.configId ? "var(--cyan-signal)" : "var(--border)"}`,
-                                  borderRadius: 3,
-                                  cursor: "pointer",
-                                  transition: "all 0.15s",
-                                }}
-                              >
-                                {cfg.configId}
-                              </button>
-                            ))}
+                              { configId: "config_0", dataMode: "scan" },
+                              { configId: "config_1", dataMode: "scan" }, { configId: "config_106", dataMode: "scan" },
+                              { configId: "config_115", dataMode: "scan" }, { configId: "config_124", dataMode: "scan" },
+                              { configId: "config_160", dataMode: "scan" }, { configId: "config_214", dataMode: "scan" },
+                              { configId: "config_216", dataMode: "scan" }, { configId: "config_223", dataMode: "scan" },
+                              { configId: "stare_config_1", dataMode: "stare" }, { configId: "stare_config_106", dataMode: "stare" },
+                              { configId: "stare_config_115", dataMode: "stare" }, { configId: "stare_config_124", dataMode: "stare" },
+                              { configId: "stare_config_160", dataMode: "stare" }, { configId: "stare_config_223", dataMode: "stare" },
+                            ]).map((cfg: any) => {
+                              const isStare = cfg.dataMode === "stare";
+                              const isActive = selectedConfig === cfg.configId;
+                              const accentColor = isStare ? "#f59e0b" : "var(--cyan-signal)";
+                              return (
+                                <button
+                                  key={cfg.configId}
+                                  id={`config-btn-${cfg.configId}`}
+                                  onClick={() => setSelectedConfig(cfg.configId)}
+                                  style={{
+                                    padding: "2px 7px",
+                                    fontSize: 10,
+                                    fontFamily: "monospace",
+                                    background: isActive ? accentColor : "rgba(30,50,80,0.7)",
+                                    color: isActive ? "#000" : isStare ? "#f59e0b" : "var(--text-muted)",
+                                    border: `1px solid ${isActive ? accentColor : isStare ? "rgba(245,158,11,0.4)" : "var(--border)"}`,
+                                    borderRadius: 3,
+                                    cursor: "pointer",
+                                    transition: "all 0.15s",
+                                  }}
+                                >
+                                  {cfg.configId}
+                                </button>
+                              );
+                            })}
                           </div>
                           {tsrdConfigs.length > 0 && (() => {
                             const cfg = tsrdConfigs.find((c: any) => c.configId === selectedConfig);
                             if (!cfg) return null;
+                            const isStare = cfg.dataMode === "stare";
                             return (
-                              <div style={{ background: "rgba(0,180,255,0.05)", border: "1px solid rgba(0,180,255,0.15)", borderRadius: 4, padding: "6px 10px", marginTop: 4 }}>
+                              <div style={{ background: isStare ? "rgba(245,158,11,0.05)" : "rgba(0,180,255,0.05)", border: `1px solid ${isStare ? "rgba(245,158,11,0.2)" : "rgba(0,180,255,0.15)"}`, borderRadius: 4, padding: "6px 10px", marginTop: 4 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                  <span className="dim">Mode</span>
+                                  <span className="mono" style={{ color: isStare ? "#f59e0b" : "var(--cyan-signal)" }}>{isStare ? "STARE (Fixed Rx)" : "SCAN (Sweeping Rx)"}</span>
+                                </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                                   <span className="dim">Pulses</span>
                                   <span className="mono">{(cfg.pulseCount || 0).toLocaleString()}</span>
@@ -2886,31 +2915,46 @@ export default function EWConsole() {
               <div className="panel" style={{ marginBottom: 14 }}>
                 <div className="panel-head">
                   <span className="panel-title">TURING SYNTHETIC RADAR DATASET (TSRD) — MULTI-CONFIG SPECIFICATION</span>
-                  <span className="panel-tag live">9 CONFIGS · LOCAL DATASET READY</span>
+                  <span className="panel-tag live">
+                    {tsrdConfigs.length > 0 ? tsrdConfigs.length : 15} CONFIGS · LOCAL DATASET READY
+                  </span>
                 </div>
                 <div className="panel-body">
+                  {/* Scan vs Stare mode legend */}
+                  <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 10, alignItems: "center" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "var(--cyan-signal)", display: "inline-block" }} />
+                      <span style={{ color: "var(--cyan-signal)", fontFamily: "monospace", letterSpacing: 0.5 }}>SCAN MODE</span>
+                      <span className="dim"> — Sweeping receiver (Folder 3 · dwell_centres populated)</span>
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: "#f59e0b", display: "inline-block" }} />
+                      <span style={{ color: "#f59e0b", fontFamily: "monospace", letterSpacing: 0.5 }}>STARE MODE</span>
+                      <span className="dim"> — Fixed-frequency receiver (Folder 4 · no dwell scan)</span>
+                    </span>
+                  </div>
                   <div className="grid grid-4" style={{ marginBottom: 14 }}>
                     <div className="metric">
                       <div className="metric-label">TOTAL TSRD PULSES</div>
                       <div className="metric-value cyan">
-                        {tsrdTotalPulses > 0 ? tsrdTotalPulses.toLocaleString() : "804,732"}
+                        {tsrdTotalPulses > 0 ? tsrdTotalPulses.toLocaleString() : "9,416,871"}
                       </div>
-                      <div className="metric-sub">9 CONFIGS (FOLDER 3 + config_0)</div>
+                      <div className="metric-sub">{tsrdConfigs.length > 0 ? tsrdConfigs.length : 15} CONFIGS (SCAN + STARE)</div>
                     </div>
                     <div className="metric">
                       <div className="metric-label">TOTAL EMITTERS</div>
-                      <div className="metric-value">{tsrdTotalEmitters > 0 ? tsrdTotalEmitters : 489}</div>
-                      <div className="metric-sub">ACROSS ALL CONFIGS</div>
+                      <div className="metric-value">{tsrdTotalEmitters > 0 ? tsrdTotalEmitters : 813}</div>
+                      <div className="metric-sub">SCAN + STARE COMBINED</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-label">CONFIG FILES</div>
-                      <div className="metric-value amber">{tsrdConfigs.length > 0 ? tsrdConfigs.length : 9}</div>
-                      <div className="metric-sub">HDF5 SCENARIOS</div>
+                      <div className="metric-label">SCAN CONFIGS</div>
+                      <div className="metric-value amber">{tsrdScanConfigCount > 0 ? tsrdScanConfigCount : 9}</div>
+                      <div className="metric-sub">FOLDER 3 + config_0</div>
                     </div>
                     <div className="metric">
-                      <div className="metric-label">PDW FEATURES</div>
-                      <div className="metric-value">5</div>
-                      <div className="metric-sub">ToA · Freq · PW · AoA · Amp</div>
+                      <div className="metric-label">STARE CONFIGS</div>
+                      <div className="metric-value" style={{ color: "#f59e0b" }}>{tsrdStareConfigCount > 0 ? tsrdStareConfigCount : 6}</div>
+                      <div className="metric-sub">FOLDER 4 · FIXED RX</div>
                     </div>
                   </div>
 
@@ -2919,54 +2963,76 @@ export default function EWConsole() {
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, fontFamily: "monospace" }}>
                       <thead>
                         <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                          {["Config", "Filename", "Pulses", "TX Count", "Unique Emitters", "Freq Range", "Bands"].map(h => (
+                          {["Config", "Mode", "Filename", "Pulses", "TX Count", "Unique Emitters", "Freq Range", "Bands"].map(h => (
                             <th key={h} style={{ padding: "5px 10px", textAlign: "left", color: "var(--cyan-signal)", fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {(tsrdConfigs.length > 0 ? tsrdConfigs : [
-                          { configId: "config_0",   filename: "config_0.h5",   pulseCount: 0,       txCount: 72,  uniqueEmitters: 72,  freqMinMhz: 500,    freqMaxMhz: 18000 },
-                          { configId: "config_1",   filename: "config_1.h5",   pulseCount: 50013,   txCount: 36,  uniqueEmitters: 30,  freqMinMhz: 350960, freqMaxMhz: 29317326 },
-                          { configId: "config_106", filename: "config_106.h5", pulseCount: 264849,  txCount: 81,  uniqueEmitters: 70,  freqMinMhz: 389661, freqMaxMhz: 29299894 },
-                          { configId: "config_115", filename: "config_115.h5", pulseCount: 7823,    txCount: 24,  uniqueEmitters: 17,  freqMinMhz: 2552094,freqMaxMhz: 28149572 },
-                          { configId: "config_124", filename: "config_124.h5", pulseCount: 60090,   txCount: 41,  uniqueEmitters: 28,  freqMinMhz: 350634, freqMaxMhz: 29247236 },
-                          { configId: "config_160", filename: "config_160.h5", pulseCount: 168995,  txCount: 74,  uniqueEmitters: 56,  freqMinMhz: 231064, freqMaxMhz: 29298608 },
-                          { configId: "config_214", filename: "config_214.h5", pulseCount: 86148,   txCount: 40,  uniqueEmitters: 28,  freqMinMhz: 600151, freqMaxMhz: 28744662 },
-                          { configId: "config_216", filename: "config_216.h5", pulseCount: 99588,   txCount: 53,  uniqueEmitters: 35,  freqMinMhz: 400938, freqMaxMhz: 29271962 },
-                          { configId: "config_223", filename: "config_223.h5", pulseCount: 67226,   txCount: 68,  uniqueEmitters: 50,  freqMinMhz: 350542, freqMaxMhz: 29295408 },
-                        ]).map((cfg: any, i: number) => (
-                          <tr
-                            key={cfg.configId}
-                            style={{
-                              borderBottom: "1px solid rgba(40,60,90,0.5)",
-                              background: i % 2 === 0 ? "rgba(0,0,0,0)" : "rgba(0,180,255,0.03)",
-                              cursor: "pointer",
-                              transition: "background 0.15s",
-                            }}
-                            onClick={() => setSelectedConfig(cfg.configId)}
-                          >
-                            <td style={{ padding: "5px 10px", color: selectedConfig === cfg.configId ? "var(--cyan-signal)" : "var(--text-main)" }}>
-                              {selectedConfig === cfg.configId ? "▶ " : ""}{cfg.configId}
-                            </td>
-                            <td style={{ padding: "5px 10px", color: "var(--text-muted)" }}>{cfg.filename}</td>
-                            <td style={{ padding: "5px 10px", color: "var(--cyan-bright)" }}>{cfg.pulseCount ? cfg.pulseCount.toLocaleString() : "—"}</td>
-                            <td style={{ padding: "5px 10px" }}>{cfg.txCount}</td>
-                            <td style={{ padding: "5px 10px", color: "var(--green-confirm)" }}>{cfg.uniqueEmitters}</td>
-                            <td style={{ padding: "5px 10px", fontSize: 10, color: "var(--text-muted)" }}>
-                              {cfg.freqMinMhz && cfg.freqMinMhz > 10000
-                                ? `${(cfg.freqMinMhz/1000000).toFixed(2)}–${(cfg.freqMaxMhz/1000000).toFixed(2)} THz*`
-                                : cfg.freqMinMhz
-                                  ? `${(cfg.freqMinMhz/1000).toFixed(0)}–${(cfg.freqMaxMhz/1000).toFixed(0)} GHz`
-                                  : "500–18000 MHz"}
-                            </td>
-                            <td style={{ padding: "5px 10px" }}>36</td>
-                          </tr>
-                        ))}
+                          { configId: "config_0",          dataMode: "scan",  filename: "config_0.h5",   pulseCount: 0,         txCount: 72, uniqueEmitters: 72, freqMinMhz: 500,  freqMaxMhz: 18000 },
+                          { configId: "config_1",          dataMode: "scan",  filename: "config_1.h5",   pulseCount: 50013,     txCount: 36, uniqueEmitters: 30, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_106",        dataMode: "scan",  filename: "config_106.h5", pulseCount: 264849,    txCount: 81, uniqueEmitters: 70, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_115",        dataMode: "scan",  filename: "config_115.h5", pulseCount: 7823,      txCount: 24, uniqueEmitters: 17, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_124",        dataMode: "scan",  filename: "config_124.h5", pulseCount: 60090,     txCount: 41, uniqueEmitters: 28, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_160",        dataMode: "scan",  filename: "config_160.h5", pulseCount: 168995,    txCount: 74, uniqueEmitters: 56, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_214",        dataMode: "scan",  filename: "config_214.h5", pulseCount: 86148,     txCount: 40, uniqueEmitters: 28, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_216",        dataMode: "scan",  filename: "config_216.h5", pulseCount: 99588,     txCount: 53, uniqueEmitters: 35, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "config_223",        dataMode: "scan",  filename: "config_223.h5", pulseCount: 67226,     txCount: 68, uniqueEmitters: 50, freqMinMhz: 2000, freqMaxMhz: 18000 },
+                          { configId: "stare_config_1",   dataMode: "stare", filename: "config_1.h5",   pulseCount: 448575,    txCount: 36, uniqueEmitters: 27, freqMinMhz: 1279, freqMaxMhz: 10017 },
+                          { configId: "stare_config_106", dataMode: "stare", filename: "config_106.h5", pulseCount: 2187808,   txCount: 81, uniqueEmitters: 59, freqMinMhz: 1199, freqMaxMhz: 10015 },
+                          { configId: "stare_config_115", dataMode: "stare", filename: "config_115.h5", pulseCount: 650926,    txCount: 24, uniqueEmitters: 17, freqMinMhz: 1020, freqMaxMhz: 9614  },
+                          { configId: "stare_config_124", dataMode: "stare", filename: "config_124.h5", pulseCount: 1719644,   txCount: 41, uniqueEmitters: 26, freqMinMhz: 1086, freqMaxMhz: 10002 },
+                          { configId: "stare_config_160", dataMode: "stare", filename: "config_160.h5", pulseCount: 2922089,   txCount: 74, uniqueEmitters: 54, freqMinMhz: 1199, freqMaxMhz: 11408 },
+                          { configId: "stare_config_223", dataMode: "stare", filename: "config_223.h5", pulseCount: 683097,    txCount: 68, uniqueEmitters: 45, freqMinMhz: 1199, freqMaxMhz: 10014 },
+                        ]).map((cfg: any, i: number) => {
+                          const isStare = cfg.dataMode === "stare";
+                          const isActive = selectedConfig === cfg.configId;
+                          const accentColor = isStare ? "#f59e0b" : "var(--cyan-signal)";
+                          return (
+                            <tr
+                              key={cfg.configId}
+                              style={{
+                                borderBottom: "1px solid rgba(40,60,90,0.5)",
+                                background: isActive
+                                  ? (isStare ? "rgba(245,158,11,0.07)" : "rgba(0,180,255,0.07)")
+                                  : i % 2 === 0 ? "rgba(0,0,0,0)" : "rgba(0,180,255,0.02)",
+                                cursor: "pointer",
+                                transition: "background 0.15s",
+                              }}
+                              onClick={() => setSelectedConfig(cfg.configId)}
+                            >
+                              <td style={{ padding: "5px 10px", color: isActive ? accentColor : "var(--text-main)" }}>
+                                {isActive ? "▶ " : ""}{cfg.configId}
+                              </td>
+                              <td style={{ padding: "5px 8px" }}>
+                                <span style={{
+                                  fontSize: 9, padding: "1px 5px", borderRadius: 3, fontFamily: "monospace",
+                                  background: isStare ? "rgba(245,158,11,0.15)" : "rgba(0,180,255,0.12)",
+                                  color: isStare ? "#f59e0b" : "var(--cyan-signal)",
+                                  border: `1px solid ${isStare ? "rgba(245,158,11,0.3)" : "rgba(0,180,255,0.3)"}`,
+                                }}>
+                                  {isStare ? "STARE" : "SCAN"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "5px 10px", color: "var(--text-muted)" }}>{cfg.filename}</td>
+                              <td style={{ padding: "5px 10px", color: "var(--cyan-bright)" }}>{cfg.pulseCount ? cfg.pulseCount.toLocaleString() : "—"}</td>
+                              <td style={{ padding: "5px 10px" }}>{cfg.txCount}</td>
+                              <td style={{ padding: "5px 10px", color: "var(--green-confirm)" }}>{cfg.uniqueEmitters}</td>
+                              <td style={{ padding: "5px 10px", fontSize: 10, color: "var(--text-muted)" }}>
+                                {cfg.freqMinMhz
+                                  ? `${(cfg.freqMinMhz/1000).toFixed(1)}–${(cfg.freqMaxMhz/1000).toFixed(1)} GHz`
+                                  : "0.5–18.0 GHz"}
+                              </td>
+                              <td style={{ padding: "5px 10px" }}>36</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                     <div style={{ fontSize: 9, color: "var(--text-faint)", marginTop: 6, paddingLeft: 10 }}>
-                      * Raw ToA-encoded freq values from HDF5; bands remapped to 2–20 GHz (36 × 500 MHz IBW) for simulation.
+                      SCAN configs: 2–20 GHz band mapping (36 × 500 MHz, FREQ_MIN = 2000 MHz). &nbsp;
+                      STARE configs: 0.5–18.5 GHz band mapping (FREQ_MIN = 500 MHz, covers 1–11 GHz stare range).
                     </div>
                   </div>
                 </div>
@@ -3039,7 +3105,7 @@ export default function EWConsole() {
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <span className="dim">Episode Pool</span>
                         <span className="mono" style={{ color: "var(--cyan-signal)" }}>
-                          config_0 + 8 folder-3 configs (round-robin)
+                          config_0 + 8 scan + 6 stare (round-robin)
                         </span>
                       </div>
                     </div>
@@ -3051,12 +3117,20 @@ export default function EWConsole() {
               {tsrdConfigs.length > 0 && (() => {
                 const cfg = tsrdConfigs.find((c: any) => c.configId === selectedConfig);
                 if (!cfg || !cfg.bandActivity) return null;
+                const isStare = cfg.dataMode === "stare";
                 return (
-                  <div className="panel">
+                  <div className="panel" style={{ borderColor: isStare ? "rgba(245,158,11,0.25)" : undefined }}>
                     <div className="panel-head">
                       <span className="panel-title">BAND ACTIVITY PROFILE — {cfg.configId.toUpperCase()}</span>
-                      <span className="panel-tag sim">{cfg.txCount} TX · {cfg.pulseCount.toLocaleString()} PULSES</span>
+                      <span className="panel-tag" style={{ background: isStare ? "rgba(245,158,11,0.15)" : undefined, color: isStare ? "#f59e0b" : undefined }}>
+                        {isStare ? "STARE MODE · " : ""}{cfg.txCount} TX · {cfg.pulseCount.toLocaleString()} PULSES
+                      </span>
                     </div>
+                    {isStare && (
+                      <div style={{ padding: "6px 12px", background: "rgba(245,158,11,0.06)", borderBottom: "1px solid rgba(245,158,11,0.15)", fontSize: 10, color: "#f59e0b" }}>
+                        ⚠ STARE MODE: Receiver fixed at one frequency — no scanning. Band mapping uses FREQ_MIN = 500 MHz (covers 0.5–18.5 GHz). Active bands concentrate in B01–B21 (1–11 GHz).
+                      </div>
+                    )}
                     <div className="panel-body">
                       <div style={{ display: "flex", gap: 1, alignItems: "flex-end", height: 80, padding: "4px 0" }}>
                         {(cfg.bandActivity as number[]).map((act: number, b: number) => (

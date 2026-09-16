@@ -42,7 +42,15 @@ export interface SystemStatus {
 /** Metadata for a single TSRD scenario configuration file */
 export interface TSRDConfig {
   configId: string;
+  /** Original config ID before any prefix (e.g. "config_1" for "stare_config_1") */
+  rawConfigId?: string;
   filename: string;
+  /**
+   * Receiver operating mode:
+   * - "scan"  — receiver sweeps bands (Folder 3, dwell_centres_mhz populated)
+   * - "stare" — receiver fixed at one frequency (Folder 4, dwell_centres_mhz empty)
+   */
+  dataMode?: "scan" | "stare";
   pulseCount: number;
   txCount: number;
   uniqueEmitters: number;
@@ -62,6 +70,10 @@ export interface DatasetConfigsResponse {
   totalConfigs: number;
   totalPulses: number;
   totalEmitters: number;
+  /** Number of scan-mode configs (Folder 3 + config_0) */
+  scanConfigCount?: number;
+  /** Number of stare-mode configs (Folder 4) */
+  stareConfigCount?: number;
   datasetLoaded: boolean;
   episodesAvailable: number | null;
   scanStats: Array<{
